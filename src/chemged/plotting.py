@@ -1,7 +1,11 @@
+"""Plotting utilities for visualizing chemical structure assignments."""
+
 try:
     import matplotlib.pyplot as plt
 except ImportError as e:
-    raise ImportError("matplotlib is required for plotting. Please install it using 'pip install matplotlib'.") from e
+    raise ImportError(
+        "matplotlib is required for plotting. Please install it using 'pip install matplotlib'."
+    ) from e
 
 from os import PathLike
 from typing import Optional
@@ -9,10 +13,16 @@ from typing import Optional
 import networkx as nx
 import numpy as np
 
-from .chem_utils import Molable, to_mol, mol_to_nx
+from .chem_utils import Molable, mol_to_nx, to_mol
 
 
-def plot_assignment(chemical1:Molable, chemical2: Molable, assignment, save_path: Optional[PathLike]=None, show: bool=True) -> "plt.Figure":
+def plot_assignment(
+    chemical1: Molable,
+    chemical2: Molable,
+    assignment,
+    save_path: Optional[PathLike] = None,
+    show: bool = True,
+) -> "plt.Figure":
     """
     Plot the assignment of two chemical structures, mapping nodes from one to the other.
 
@@ -41,22 +51,31 @@ def plot_assignment(chemical1:Molable, chemical2: Molable, assignment, save_path
     Figure
         the matplotlib Figure object containing the plot of the assignment
     """
-    g1 =  mol_to_nx(to_mol(chemical1, fail_on_error=True))
-    g2 =  mol_to_nx(to_mol(chemical2, fail_on_error=True))
+    g1 = mol_to_nx(to_mol(chemical1, fail_on_error=True))
+    g2 = mol_to_nx(to_mol(chemical2, fail_on_error=True))
 
-    g_comp = nx.disjoint_union(g1, g2)
+    g_comp = nx.disjoint_union_all([g1, g2])
 
-    position = {k: v['coord'] for k, v in g_comp.node.items()}
+    # Generate positions for each graph separately
+    pos1 = nx.spring_layout(g1)
+    pos2 = nx.spring_layout(g2)
 
-    center1 = np.mean(list(position.values())[0:len(g1)], axis=0)
-    max_pos1 = np.max(np.abs(list(position.values())[0:len(g1)] - center1))
+    # Calculate centers and max distances for each graph
+    center1 = np.mean(list(pos1.values()), axis=0)
+    max_pos1 = np.max(np.abs(np.array(list(pos1.values())) - center1))
 
-    center2 = np.mean(list(position.values())[len(g1):], axis=0)
-    max_pos2 = np.max(np.abs(list(position.values())[len(g1):] - center2))
+    center2 = np.mean(list(pos2.values()), axis=0)
+    max_pos2 = np.max(np.abs(np.array(list(pos2.values())) - center2))
 
-    keys_modify = list(position.keys())[len(g1):]
-    for x in keys_modify:
-        position[x][0] += 2 * (np.max([max_pos1, max_pos2]) + 0.5)
+    # Combine positions, shifting the second graph to the right
+    position = {}
+    for node, pos in pos1.items():
+        position[node] = pos
+
+    shift = 2 * (np.max([max_pos1, max_pos2]) + 0.5)
+    for node, pos in pos2.items():
+        position[node + len(g1)] = pos.copy()
+        position[node + len(g1)][0] += shift
 
     ag1, ag2 = assignment
 
@@ -77,39 +96,37 @@ def plot_assignment(chemical1:Molable, chemical2: Molable, assignment, save_path
             nodelist_ins += [i2 + len(g1)]
 
     center = np.mean(list(position.values()), axis=0)
-    max_pos = np.max(np.abs(np.array(position.values()) - center))
+    max_pos = np.max(np.abs(np.array(list(position.values())) - center), axis=0)
 
     fig = plt.figure()
 
-    nx.draw_networkx_nodes(g_comp, position,
-                           nodelist=[item for item in g_comp.nodes() if item not in nodelist_ins + nodelist_del],
-                           node_color='black',
-                           node_size=200)
+    nx.draw_networkx_nodes(
+        g_comp,
+        position,
+        nodelist=[item for item in g_comp.nodes if item not in nodelist_ins + nodelist_del],
+        node_color="black",
+        node_size=200,
+    )
 
-    nx.draw_networkx_edges(g_comp, position,
-                           edgelist=[item for item in g_comp.edges() if item not in edgelist]
-                           )
+    nx.draw_networkx_edges(
+        g_comp, position, edgelist=[item for item in g_comp.edges if item not in edgelist]
+    )
 
-    nx.draw_networkx_edges(g_comp, position,
-                           edgelist=edgelist,
-                           width=3, alpha=0.5, edge_color='b',
-                           style='dashed')
+    nx.draw_networkx_edges(
+        g_comp, position, edgelist=edgelist, width=3, alpha=0.5, edge_color="b", style="dashed"
+    )
 
-    nx.draw_networkx_nodes(g_comp, position,
-                           nodelist=nodelist_ins,
-                           node_color='g',
-                           node_size=500,
-                           alpha=0.8)
+    nx.draw_networkx_nodes(
+        g_comp, position, nodelist=nodelist_ins, node_color="g", node_size=500, alpha=0.8
+    )
 
-    nx.draw_networkx_nodes(g_comp, position,
-                           nodelist=nodelist_del,
-                           node_color='r',
-                           node_size=500,
-                           alpha=0.8)
+    nx.draw_networkx_nodes(
+        g_comp, position, nodelist=nodelist_del, node_color="r", node_size=500, alpha=0.8
+    )
 
-    plt.ylim([center[1] - max_pos - 0.5, center[1] + max_pos + 0.5])
-    plt.xlim([center[0] - max_pos - 0.5, center[0] + max_pos + 0.5])
-    plt.axis('off')
+    plt.ylim([center[1] - max_pos[1] - 0.5, center[1] + max_pos[1] + 0.5])
+    plt.xlim([center[0] - max_pos[0] - 0.5, center[0] + max_pos[0] + 0.5])
+    plt.axis("off")
 
     if save_path is not None:
         plt.savefig(save_path)

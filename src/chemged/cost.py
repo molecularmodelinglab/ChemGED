@@ -2,10 +2,9 @@
 
 import abc
 
+import networkx as nx
 import numpy as np
 import numpy.typing as npt
-
-import networkx as nx
 from networkx import Graph
 from networkx.classes.coreviews import AtlasView
 
@@ -211,16 +210,17 @@ class UniformElementCostMatrix(ChemicalGEDCostMatrix):
     edge_del_cost : float, default=1.0
         The uniform cost of deleting an edge (bond).
     """
+
     def __init__(
-            self,
-            node_sub_cost=1.0,
-            node_ins_cost=1.0,
-            node_del_cost=1.0,
-            edge_sub_cost=1.0,
-            edge_ins_cost=1.0,
-            edge_del_cost=1.0
+        self,
+        node_sub_cost=1.0,
+        node_ins_cost=1.0,
+        node_del_cost=1.0,
+        edge_sub_cost=1.0,
+        edge_ins_cost=1.0,
+        edge_del_cost=1.0,
     ):
-        """initialize an object"""
+        """Initialize an object"""
         self.node_sub_cost = node_sub_cost
         self.node_ins_cost = node_ins_cost
         self.node_del_cost = node_del_cost
@@ -257,7 +257,7 @@ class UniformElementCostMatrix(ChemicalGEDCostMatrix):
         v2 = list(nx.get_node_attributes(g2, "atomic_num").values())
 
         # generate the cost matrix
-        return np.equal.outer(v1, v2) * self.node_sub_cost
+        return ~np.equal.outer(v1, v2) * self.node_sub_cost
 
     def get_node_insertion_costs(self, g: Graph) -> npt.NDArray:
         """
@@ -327,7 +327,7 @@ class UniformElementCostMatrix(ChemicalGEDCostMatrix):
         e2 = [e["bond_type"] for e in n2.values()]
 
         # generate the cost matrix
-        return np.equal.outer(e1, e2) * self.edge_sub_cost
+        return ~np.equal.outer(e1, e2) * self.edge_sub_cost
 
     def get_edge_insertion_costs(self, n: AtlasView) -> npt.NDArray:
         """

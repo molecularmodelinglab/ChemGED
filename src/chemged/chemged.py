@@ -1,25 +1,24 @@
 """handles calculation of approximate chemical GEDs"""
-import itertools
-from typing import Literal, overload, Sequence
 
-from tqdm import tqdm
+import itertools
+from typing import Literal, Sequence, overload
 
 import numpy as np
 import numpy.typing as npt
-from scipy.optimize import linear_sum_assignment
-
 from networkx import Graph
 from networkx.classes.coreviews import AtlasView
+from scipy.optimize import linear_sum_assignment
+from tqdm import tqdm
 
+from .chem_utils import Molable, mol_to_nx, to_mol
 from .cost import ChemicalGEDCostMatrix
-from .chem_utils import Molable, to_mol, mol_to_nx
 
 
 MAX_INT32 = 2147483647
 
 
 class ApproximateChemicalGED:
-    """
+    r"""
     Calculator for approximate graph edit distance (GED) between two chemical graphs.
 
     Parameters
@@ -50,9 +49,10 @@ class ApproximateChemicalGED:
     \\infty & \\cdots & \\infty & c_{\\epsilon, m} & 0 & \\cdots & 0 & 0 \\\\
     \\end{bmatrix}
 
-    where :math:`c_{n,m}` is the cost of substituting node :math:`n` in graph :math:`n1` with node
-    :math:`m` in graph :math:`n2, :math:`c_{n,\\epsilon}` is the cost of deleting a node from :math:`n1`,
-    and :math:`c_{\\epsilon,m}` is the cost of inserting node :math:`m` from :math:`n2` into :math:`n1`.
+    where :math:`c_{n,m}` is the cost of substituting node :math:`n` in graph :math:`n1`
+    with node :math:`m` in graph :math:`n2, :math:`c_{n,\\epsilon}` is the cost of deleting
+    a node from :math:`n1`, and :math:`c_{\\epsilon,m}` is the cost of inserting node
+    :math:`m` from :math:`n2` into :math:`n1`.
 
     Nodes can only be deleted or inserted once, so only the diagonals are populated in the
     insertion (bottom left) and deletion (upper right) sections of the cost matrix.
@@ -97,21 +97,23 @@ class ApproximateChemicalGED:
         cost_matrix = np.zeros([len(n1) + len(n2), len(n1) + len(n2)])
 
         # Insertion
-        cost_matrix[len(n1):, 0:len(n2)] = np.inf
-        np.fill_diagonal(cost_matrix[len(n1):, 0:len(n2)], self.cost_matrix.get_edge_insertion_costs(n1))
+        cost_matrix[len(n1) :, 0 : len(n2)] = MAX_INT32
+        np.fill_diagonal(
+            cost_matrix[len(n1) :, 0 : len(n2)], self.cost_matrix.get_edge_insertion_costs(n1)
+        )
 
         # Deletion
-        cost_matrix[0:len(n1), len(n2):] = np.inf
-        np.fill_diagonal(cost_matrix[0:len(n1), len(n2):], self.cost_matrix.get_edge_deletion_costs(n2))
+        cost_matrix[0 : len(n1), len(n2) :] = MAX_INT32
+        np.fill_diagonal(
+            cost_matrix[0 : len(n1), len(n2) :], self.cost_matrix.get_edge_deletion_costs(n2)
+        )
 
         # Substitution
-        cost_matrix[0:len(n1), 0:len(n2)] = self.cost_matrix.get_edge_substitution_costs(n1, n2)
+        cost_matrix[0 : len(n1), 0 : len(n2)] = self.cost_matrix.get_edge_substitution_costs(
+            n1, n2
+        )
 
         return cost_matrix
-
-    """
-        Approximated graph edit distance for edges. The local structures are matched with this algorithm.
-    """
 
     def _edge_edit_cost(self, n1: AtlasView, n2: AtlasView):
         """
@@ -132,7 +134,6 @@ class ApproximateChemicalGED:
         float
             the approximate graph edit cost for edges between the two nodes
         """
-
         # Compute cost matrix
         cost_matrix = self._edge_cost_matrix(n1, n2)
 
@@ -168,19 +169,19 @@ class ApproximateChemicalGED:
         cost_matrix = np.zeros([len(g1) + len(g2), len(g1) + len(g2)])
 
         # Insertion
-        cost_matrix[len(g1):, 0:len(g2)] = np.inf
+        cost_matrix[len(g1) :, 0 : len(g2)] = MAX_INT32
         np.fill_diagonal(
-            cost_matrix[len(g1):, 0:len(g2)],
-            self.cost_matrix.get_node_insertion_costs(g1) +
-            [self.cost_matrix.get_edge_insertion_costs(g1[i]) for i in range(len(g1))]
+            cost_matrix[len(g1) :, 0 : len(g2)],
+            self.cost_matrix.get_node_insertion_costs(g1)
+            + [self.cost_matrix.get_edge_insertion_costs(g1[i]).sum() for i in range(len(g1))],
         )
 
         # Deletion
-        cost_matrix[0:len(g1), len(g2):] = np.inf
+        cost_matrix[0 : len(g1), len(g2) :] = MAX_INT32
         np.fill_diagonal(
-            cost_matrix[0:len(g1), len(g2):],
-            self.cost_matrix.get_node_deletion_costs(g2) +
-            [self.cost_matrix.get_edge_deletion_costs(g2[i]) for i in range(len(g2))]
+            cost_matrix[0 : len(g1), len(g2) :],
+            self.cost_matrix.get_node_deletion_costs(g2)
+            + [self.cost_matrix.get_edge_deletion_costs(g2[i]).sum() for i in range(len(g2))],
         )
 
         # Substitution
@@ -189,19 +190,28 @@ class ApproximateChemicalGED:
         for i, n in enumerate(g1.nodes()):
             for j, m in enumerate(g2.nodes()):
                 node_dist[i, j] += self._edge_edit_cost(g1[n], g2[m])
-        cost_matrix[0:len(g1), 0:len(g2)] = node_dist
+        cost_matrix[0 : len(g1), 0 : len(g2)] = node_dist
 
         return cost_matrix
 
     @overload
-    def _ged(self, g1: Graph, g2: Graph, return_assignment: Literal[False]) -> tuple[float, None]:
-        ...
+    def _ged(
+        self, g1: Graph, g2: Graph, return_assignment: Literal[False]
+    ) -> tuple[float, None]: ...
 
     @overload
-    def _ged(self, g1: Graph, g2: Graph, return_assignment: Literal[True]) -> tuple[float, tuple[npt.ndarray, npt.ndarray]]:
-        ...
+    def _ged(
+        self, g1: Graph, g2: Graph, return_assignment: Literal[True]
+    ) -> tuple[float, tuple[npt.NDArray, npt.NDArray]]: ...
 
-    def _ged(self, g1: Graph, g2: Graph, return_assignment: bool = False) -> tuple[float, tuple[npt.ndarray, npt.ndarray] | None]:
+    @overload
+    def _ged(
+        self, g1: Graph, g2: Graph, return_assignment: bool
+    ) -> tuple[float, tuple[npt.NDArray, npt.NDArray] | None]: ...
+
+    def _ged(
+        self, g1: Graph, g2: Graph, return_assignment: bool = False
+    ) -> tuple[float, tuple[npt.NDArray, npt.NDArray] | None]:
         """
         Compute the approximate graph edit distance between two chemicals
 
@@ -232,19 +242,26 @@ class ApproximateChemicalGED:
             not_assign = np.invert((row_ind >= len(g1)) * (col_ind >= len(g2)))
             return dist, (row_ind[not_assign], col_ind[not_assign])
         else:
-            return dist
+            return dist, None
 
     @overload
-    def compute_ged(self, chemical1: Molable, chemical2: Molable, return_assignment: Literal[False]) -> float:
-        ...
+    def compute_ged(
+        self, chemical1: Molable, chemical2: Molable, return_assignment: Literal[False]
+    ) -> float: ...
 
     @overload
-    def compute_ged(self, chemical1: Molable, chemical2: Molable, return_assignment: Literal[True]) -> tuple[
-        float, tuple[npt.ndarray, npt.ndarray]]:
-        ...
+    def compute_ged(
+        self, chemical1: Molable, chemical2: Molable, return_assignment: Literal[True]
+    ) -> tuple[float, tuple[npt.NDArray, npt.NDArray]]: ...
 
-    def compute_ged(self, chemical1: Molable, chemical2: Molable, return_assignment: bool = False) -> float | tuple[
-        float, tuple[npt.ndarray, npt.ndarray]]:
+    @overload
+    def compute_ged(
+        self, chemical1: Molable, chemical2: Molable, return_assignment: bool
+    ) -> float | tuple[float, tuple[npt.NDArray, npt.NDArray]]: ...
+
+    def compute_ged(
+        self, chemical1: Molable, chemical2: Molable, return_assignment: bool = False
+    ) -> float | tuple[float, tuple[npt.NDArray, npt.NDArray]]:
         """
         Compute the approximate graph edit distance between two chemicals
 
@@ -274,22 +291,24 @@ class ApproximateChemicalGED:
             'assignment' is a tuple of two numpy arrays defining the assignment
             between the nodes of the two graphs if `return_assignment` is True.
         """
-
         mol1 = to_mol(chemical1, fail_on_error=True)
         mol2 = to_mol(chemical2, fail_on_error=True)
 
-        g1 = mol_to_nx(mol1)
-        g2 = mol_to_nx(mol2)
+        g1: Graph = mol_to_nx(mol1)
+        g2: Graph = mol_to_nx(mol2)
 
         dist, assignment = self._ged(g1, g2, return_assignment=return_assignment)
         if return_assignment:
-            return dist, assignment
+            if assignment is None:
+                raise ValueError("Assignment is None, this should not happen.")
+            else:
+                return dist, assignment
         else:
             return dist
 
-    def pdist(self, chemicals: Sequence[Molable], use_tqdm: bool = False) -> npt.ndarray:
+    def pdist(self, chemicals: Sequence[Molable], use_tqdm: bool = False) -> npt.NDArray:
         """
-        Given a sequence of chemicals, compute the approximate graph edit distance between chemicals
+        Given a list of chemicals, get the approximate graph edit distance between chemicals
 
         Notes
         -----
@@ -310,18 +329,34 @@ class ApproximateChemicalGED:
             a condensed distance vector containing the pairwise distances between the chemicals.
             The length of the vector will be n * (n - 1) / 2, where n is the number of chemicals.
         """
-
-        mols = [to_mol(c, fail_on_error=True) for c in tqdm(chemicals, disable=not use_tqdm, desc="Converting chemicals to Mol objects")]
-        graphs = [mol_to_nx(mol) for mol in tqdm(mols, disable=not use_tqdm, desc="Converting Mol objects to NetworkX graphs")]
+        mols = [
+            to_mol(c, fail_on_error=True)
+            for c in tqdm(
+                chemicals, disable=not use_tqdm, desc="Converting chemicals to Mol objects"
+            )
+        ]
+        graphs = [
+            mol_to_nx(mol)
+            for mol in tqdm(
+                mols, disable=not use_tqdm, desc="Converting Mol objects to NetworkX graphs"
+            )
+        ]
 
         dists = []
         total_calcs = len(graphs) * (len(graphs) - 1) // 2
-        for g1, g2 in tqdm(itertools.combinations(graphs, 2), total=total_calcs, disable=not use_tqdm, desc="Computing pairwise Approx. GED distances between chemicals"):
+        for g1, g2 in tqdm(
+            itertools.combinations(graphs, 2),
+            total=total_calcs,
+            disable=not use_tqdm,
+            desc="Computing pairwise Approx. GED distances between chemicals",
+        ):
             dists.append(self._ged(g1, g2, return_assignment=False)[0])
 
         return np.array(dists, dtype=np.float64)
 
-    def cdist(self, chemicals1: Sequence[Molable], chemicals2: Sequence[Molable], use_tqdm: bool = False) -> npt.ndarray:
+    def cdist(
+        self, chemicals1: Sequence[Molable], chemicals2: Sequence[Molable], use_tqdm: bool = False
+    ) -> npt.NDArray:
         """
         Given two sequences of chemicals, compute the approximate graph edit distance between them
 
@@ -340,19 +375,51 @@ class ApproximateChemicalGED:
         -------
         np.ndarray
             a condensed distance vector containing the pairwise distances between the chemicals.
-            The length of the vector will be n * m, where n is the number of chemicals in `chemicals1`
-            and m is the number of chemicals in `chemicals2`.
+            The length of the vector will be n * m, where n is the number of chemicals in
+            `chemicals1` and m is the number of chemicals in `chemicals2`.
         """
+        mols1 = [
+            to_mol(c, fail_on_error=True)
+            for c in tqdm(
+                chemicals1,
+                disable=not use_tqdm,
+                desc="Converting first set of chemicals to Mol objects",
+            )
+        ]
+        mols2 = [
+            to_mol(c, fail_on_error=True)
+            for c in tqdm(
+                chemicals2,
+                disable=not use_tqdm,
+                desc="Converting second set of chemicals to Mol objects",
+            )
+        ]
 
-        mols1 = [to_mol(c, fail_on_error=True) for c in tqdm(chemicals1, disable=not use_tqdm, desc="Converting first set of chemicals to Mol objects")]
-        mols2 = [to_mol(c, fail_on_error=True) for c in tqdm(chemicals2, disable=not use_tqdm, desc="Converting second set of chemicals to Mol objects")]
-
-        graphs1 = [mol_to_nx(mol) for mol in tqdm(mols1, disable=not use_tqdm, desc="Converting first set of Mol objects to NetworkX graphs")]
-        graphs2 = [mol_to_nx(mol) for mol in tqdm(mols2, disable=not use_tqdm, desc="Converting second set of Mol objects to NetworkX graphs")]
+        graphs1 = [
+            mol_to_nx(mol)
+            for mol in tqdm(
+                mols1,
+                disable=not use_tqdm,
+                desc="Converting first set of Mol objects to NetworkX graphs",
+            )
+        ]
+        graphs2 = [
+            mol_to_nx(mol)
+            for mol in tqdm(
+                mols2,
+                disable=not use_tqdm,
+                desc="Converting second set of Mol objects to NetworkX graphs",
+            )
+        ]
 
         dists = []
         total_calcs = len(graphs1) * len(graphs2)
-        for g1, g2 in tqdm(itertools.product(graphs1, graphs2), total=total_calcs, disable=not use_tqdm, desc="Computing pairwise Approx. GED distances between chemicals"):
+        for g1, g2 in tqdm(
+            itertools.product(graphs1, graphs2),
+            total=total_calcs,
+            disable=not use_tqdm,
+            desc="Computing pairwise Approx. GED distances between chemicals",
+        ):
             dists.append(self._ged(g1, g2, return_assignment=False)[0])
 
         return np.array(dists, dtype=np.float64)
