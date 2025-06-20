@@ -1,0 +1,5 @@
+networkx==3.5
+numpy==2.3.0
+pillow==11.2.1
+rdkit==2024.9.6
+scipy==1.15.3
