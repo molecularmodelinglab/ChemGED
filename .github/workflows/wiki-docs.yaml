@@ -31,11 +31,12 @@ jobs:
         run: sphinx-build -M markdown ./docs ./docs/_build
       - name: Push to Wiki
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git clone https://${GH_TOKEN}@github.com/molecularmodelinglab/ChemGED.wiki.git
+          git clone https://github.com/molecularmodelinglab/ChemGED.wiki.git
           cp -r ./docs/_build/markdown/* ChemGED.wiki
           cd ChemGED.wiki
           git add .
           git diff --staged --quiet || git commit -m "Update documentation [auto-build]"
-          git push https://${GH_TOKEN}@github.com/molecularmodelinglab/ChemGED.wiki.git
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/molecularmodelinglab/ChemGED.wiki.git
+          git push origin HEAD:master
