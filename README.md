@@ -54,7 +54,7 @@ print(distances_matrix)  # Square form
 ```
 
 ## Documentation
-For more detailed documentation, please visit [ReadTheDocs](https://chemged.readthedocs.io/).
+You can read more detailed documentation in the docs folder.
 
 ## Implementation
 The approach used here uses bipartite graph matching[[1]](#1), and most of its implementation in python
