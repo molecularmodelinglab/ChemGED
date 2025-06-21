@@ -1,7 +1,7 @@
 # ChemGED
 
-ChemGED is a Python package for enabling the appoximate graph edit distance (GED) computation between 
-chemicals. Normally, GED is a NP-hard problem, but ChemGED uses heuristics to approximate the GED in 
+ChemGED is a Python package for enabling the appoximate graph edit distance (GED) computation between
+chemicals. Normally, GED is a NP-hard problem, but ChemGED uses heuristics to approximate the GED in
 a reasonable time.
 
 ## Installation
@@ -12,8 +12,8 @@ pip install chemged
 ```
 
 ## Usage
-To use ChemGED, you just create an ``ApproximateChemicalGED`` object, and then call the 
-``compute_ged`` method with two chemical structures. They can be SMILES *or* 
+To use ChemGED, you just create an ``ApproximateChemicalGED`` object, and then call the
+``compute_ged`` method with two chemical structures. They can be SMILES *or*
 [RDKit](https://www.rdkit.org/docs/index.html) Mol objects.
 
 ```python
@@ -33,25 +33,36 @@ approx_ged = ged_calc.compute_ged(MolFromSmiles(chemical1), MolFromSmiles(chemic
 ChemGED also implements ``pdist`` and ``cdist`` functions to compute pairwise distances between
 sets of chemicals. These will return as Numpy arrays.
 
-> [!NOTE]  
+> [!NOTE]
 > ``pdist`` will return the vector-form distance vector, while ``cdist`` will return a
 > square-form distance matrix. ``scipy.spatial.distance.squareform`` can be used to convert
 > the vector-form distance vector to a square-form distance matrix.
 
 ```python
+from chemged import pdist, cdist
 
+# Create a list of chemicals
+chemicals = ["CCO", "CCN", "CC", "C"]
+
+# Compute pairwise distances
+distances_vector = pdist(chemicals)
+print(distances_vector)  # Vector form
+
+# Compute all-vs-all distances
+distances_matrix = cdist(chemicals, chemicals)
+print(distances_matrix)  # Square form
 ```
 
+## Documentation
+For more detailed documentation, please visit [ReadTheDocs](https://chemged.readthedocs.io/).
 
 ## Implementation
-
-The approach used here uses bipartite graph matching[[1]](#1), and most of its implementation in python 
+The approach used here uses bipartite graph matching[[1]](#1), and most of its implementation in python
 is based off scripts from https://github.com/priba/aproximated_ged/tree/master.
 ChemGED uses [RDKit](https://www.rdkit.org/docs/index.html) to handle chemicals inside python.
 
-
 ## References
-<a id="1">[1]</a> 
-Riesen, Kaspar, and Horst Bunke. 
-"Approximate graph edit distance computation by means of bipartite graph matching." 
+<a id="1">[1]</a>
+Riesen, Kaspar, and Horst Bunke.
+"Approximate graph edit distance computation by means of bipartite graph matching."
 Image and Vision computing 27.7 (2009): 950-959

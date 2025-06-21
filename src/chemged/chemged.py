@@ -50,7 +50,7 @@ class ApproximateChemicalGED:
     \\end{bmatrix}
 
     where :math:`c_{n,m}` is the cost of substituting node :math:`n` in graph :math:`n1`
-    with node :math:`m` in graph :math:`n2, :math:`c_{n,\\epsilon}` is the cost of deleting
+    with node :math:`m` in graph :math:`n2`, :math:`c_{n,\\epsilon}` is the cost of deleting
     a node from :math:`n1`, and :math:`c_{\\epsilon,m}` is the cost of inserting node
     :math:`m` from :math:`n2` into :math:`n1`.
 

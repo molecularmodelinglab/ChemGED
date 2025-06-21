@@ -1,7 +1,8 @@
+"""Utilities for converting between RDKit Mol objects and NetworkX Graphs."""
+
 from typing import Literal, Union, overload
 
 import networkx as nx
-
 from rdkit import Chem
 from rdkit.rdBase import BlockLogs
 
@@ -98,14 +99,13 @@ def mol_to_nx(mol: Chem.Mol) -> nx.Graph:
             is_aromatic=atom.GetIsAromatic(),
             is_in_ring=atom.IsInRing(),
             hydrogen=atom.GetTotalNumHs(),
-            degree=atom.GetDegree()
+            degree=atom.GetDegree(),
+            formal_charge=atom.GetFormalCharge(),
         )
         if atom.GetIdx() > max_idx:
             max_idx = atom.GetIdx()
     for bond in mol.GetBonds():
-        graph.add_edge(bond.GetBeginAtomIdx(),
-                       bond.GetEndAtomIdx(),
-                       bond_type=bond.GetBondType())
+        graph.add_edge(bond.GetBeginAtomIdx(), bond.GetEndAtomIdx(), bond_type=bond.GetBondType())
     return graph
 
 
@@ -128,9 +128,9 @@ def nx_to_mol(graph: nx.Graph) -> Chem.Mol:
     Chem.Mol
     """
     mol = Chem.RWMol()
-    atomic_nums = nx.get_node_attributes(graph, 'atomic_num')
-    node_is_aromatics = nx.get_node_attributes(graph, 'is_aromatic')
-    node_hybridization = nx.get_node_attributes(graph, 'hybridization')
+    atomic_nums = nx.get_node_attributes(graph, "atomic_num")
+    node_is_aromatics = nx.get_node_attributes(graph, "is_aromatic")
+    node_hybridization = nx.get_node_attributes(graph, "hybridization")
     node_to_idx = {}
     for node in graph.nodes():
         a = Chem.Atom(atomic_nums[node])
@@ -139,7 +139,7 @@ def nx_to_mol(graph: nx.Graph) -> Chem.Mol:
         idx = mol.AddAtom(a)
         node_to_idx[node] = idx
 
-    bond_types = nx.get_edge_attributes(graph, 'bond_type')
+    bond_types = nx.get_edge_attributes(graph, "bond_type")
     for edge in graph.edges():
         first, second = edge
         idx_first = node_to_idx[first]
