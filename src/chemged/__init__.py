@@ -1,6 +1,6 @@
 """module info for chemged"""
 
-__version__ = "0.1.0a0"
+__version__ = "0.1.0"
 __author__ = "James Wellnitz"
 
 from .chem_utils import mol_to_nx
