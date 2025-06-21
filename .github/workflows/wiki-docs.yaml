@@ -4,11 +4,17 @@ on:
   release:
     types:
       - published
+  workflow_dispatch:  # Allow manual triggering
+
+permissions:
+  contents: write
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
       - name: Set up Git
         run: |
           git config --global user.name "github-actions[bot]"
@@ -16,17 +22,20 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: '3.11'
       - name: Install dependencies
         run: |
+          pip install -e .
           pip install -r ./docs/requirements.txt
       - name: Build docs
         run: sphinx-build -M markdown ./docs ./docs/_build
       - name: Push to Wiki
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git clone https://github.com/molecularmodelinglab/ChemGED.wiki.git
+          git clone https://${GH_TOKEN}@github.com/molecularmodelinglab/ChemGED.wiki.git
           cp -r ./docs/_build/markdown/* ChemGED.wiki
           cd ChemGED.wiki
           git add .
-          git commit -m "Update documentation [auto-build]"
-          git push
+          git diff --staged --quiet || git commit -m "Update documentation [auto-build]"
+          git push https://${GH_TOKEN}@github.com/molecularmodelinglab/ChemGED.wiki.git
