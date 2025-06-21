@@ -33,6 +33,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.intersphinx",
     "sphinx.ext.mathjax",
+    "sphinx_markdown_builder",
 ]
 
 templates_path = ["_templates"]

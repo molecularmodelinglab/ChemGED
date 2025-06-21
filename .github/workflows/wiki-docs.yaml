@@ -1,0 +1,30 @@
+name: Deploy Sphinx Docs to Wiki
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Install dependencies
+        run: |
+          pip install poetry
+          poetry install --with docs
+      - name: Build docs
+        run: sphinx-build -M markdown ./docs ./docs/_build
+      - name: Push to Wiki
+        run: |
+          git clone https://github.com/molecularmodelinglab/ChemGED.wiki.git
+          cp -r ./docs/_build/markdown/* ChemGED.wiki
+          cd ChemGED.wiki
+          git add .
+          git commit -m "Update documentation [auto-build]"
+          git push
