@@ -2,3 +2,4 @@
 .venv
 tests/test-results/
 docs/_build/
+dist/
