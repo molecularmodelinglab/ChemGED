@@ -1,12 +1,13 @@
 [tool.poetry]
 name = "chemged"
-version = "0.1.0"
-description = ""
+version = "0.1.1"
+description = "Package calculating the approximate graph edit distance between chemicals"
 authors = ["James Wellnitz <wellnitz.james@gmail.com>"]
 maintainers = [
     "James Wellnitz <wellnitz.james@gmail.com>"
 ]
 readme = "README.md"
+license = "MIT"
 repository = "https://github.com/molecularmodelinglab/ChemGED"
 classifiers = [
     "Natural Language :: English",
